@@ -1,15 +1,111 @@
 #include <vws/websocket.h>
 #include <unistd.h>
+#include <stdlib.h>
+
+//#include "websocket.h"
+
+#include <stdint.h>
+#include <errno.h>
+#include <signal.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/ip.h>
+#include <liquid/liquid.h>
+#include <math.h>
+#include <pthread.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <time.h>
+
+
+#define PORT_1 11366
+
+#define MAX_IN_BUF 256
+#define FFT_PAK_LEN 1024
+
 
 //char uri_string[256];
+
+
+//sockets
+struct sockaddr_in servaddr_1, cliaddr_1;
+socklen_t cliLen_1;
+int sockfd_1;
+
+
+
+int finito(char * msg)
+    {
+    printf(" %s \n",msg);
+    return -1;
+    }
+
+
+
+
+
+
+int do_network_setup()
+{
+int rx_msg_buffer[256];
+char *hello = "ZXP server"; 
+cliLen_1 = sizeof(struct sockaddr_in);
+socklen_t len;
+      
+// Creating socket file descriptor 
+if ( (sockfd_1 = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) 
+	finito("Socket creation failed /n"); 
+  
+//memset(&servaddr_1, 0, sizeof(servaddr_1)); 
+memset(&cliaddr_1, 0, sizeof(cliaddr_1)); 
+      
+// Fill server information 
+servaddr_1.sin_family    = AF_INET; // IPv4 
+servaddr_1.sin_addr.s_addr = INADDR_ANY; 
+servaddr_1.sin_port = htons(PORT_1); 
+      
+// Bind the socket 
+if ( bind(sockfd_1,(const struct sockaddr *)&servaddr_1, sizeof(servaddr_1)) < 0 ) 
+    finito("Bind failed\n"); 
+  
+len = sizeof(cliaddr_1);
+
+printf(" Bound, waiting for incoming \n");
+recvfrom(sockfd_1, & rx_msg_buffer, MAX_IN_BUF, 0, ( struct sockaddr *) &cliaddr_1, 
+                &len); 
+printf(" Got a caller, sending ack \n");
+
+sendto(sockfd_1, (const char *)hello, strlen(hello), 0 , (const struct sockaddr *) &cliaddr_1,len); 
+
+printf("Hello ACK message sent to client.\n");  
+return 0;
+}
+
+
+//========
 
 int main(int argc, const char* argv[])
 {
 //cstr uri;
 char uri_string[256];
-
+int debug;
 // Create connection object
 vws_cnx* cnx = vws_cnx_new();
+
+char xfer_buf[1040];
+char fred;
+
+for(int i = 0; i< 1024;i++)
+    xfer_buf[i] = i/4;
+
+
+do_network_setup();
+
 
 // Set connection timeout to 2 seconds (the default is 10). This applies
 // both to connect() and to read operations (i.e. poll()).
@@ -41,7 +137,7 @@ assert(vws_socket_is_connected((vws_socket*)cnx) == true);
 
 // Enable tracing. This will dump frames to the console in human-readable
 // format as they are sent and received.
-vws.tracelevel = VT_PROTOCOL;
+//vws.tracelevel = VT_PROTOCOL;
 
 //The following are the series of command to the KIWISDR to set up a waterfall
 
@@ -60,11 +156,13 @@ vws_frame_send_text(cnx,"SET ident_user=Blodwyn");
 printf(" Line %d \n",__LINE__);
 
 //LOOPIN
-
+debug = 0;
 while(1)
     {
     // Receive websocket message
     vws_msg* reply = vws_msg_recv(cnx);
+
+
 
     if (reply == NULL)
         {
@@ -74,8 +172,37 @@ while(1)
     else
         {
         // Free message
-        printf(" Received: \n");
+        printf(" Received: %d \n",debug++);
+
+for(int i = 0; i< 1024;i++)
+{
+fred = reply->data->data[i];
+xfer_buf[i] = 120 - fred;
+//printf(" %x ",fred);
+}
+
         vws_msg_free(reply);
+
+
+//xfer_buf = & reply->data->data;
+
+//char fred;
+
+//fred = reply->data->data[0];
+//printf("fred: %x ",fred);
+//for(int i = 0; i< 32;i++)
+
+  //  {
+  //  fred = *reply->data->data[i];
+  //  printf(" %x ",fred);
+  //  }
+
+    //xfer_buf[i] = reply->data->data[i];
+
+
+sendto(sockfd_1, &xfer_buf, FFT_PAK_LEN , 0, (struct sockaddr *) &	cliaddr_1, sizeof(cliaddr_1));
+
+
         }
      } //while(1)
  
@@ -85,6 +212,10 @@ vws_msg_send_binary(cnx, (ucstr)"Hello, world!", 14);
 // Receive websocket message
 vws_msg* reply = vws_msg_recv(cnx);
 printf(" Line %d \n",__LINE__);
+
+
+
+
 
 if (reply == NULL)
     {
