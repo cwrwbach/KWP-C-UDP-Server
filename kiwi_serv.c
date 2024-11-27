@@ -144,7 +144,7 @@ assert(vws_socket_is_connected((vws_socket*)cnx) == true);
 // Send a TEXT frame
 vws_frame_send_text(cnx, "SET auth t=kiwi p=");
 usleep(100000);
-vws_frame_send_text(cnx,"SET zoom=4 cf=15000");
+vws_frame_send_text(cnx,"SET zoom=1 cf=2000");
 usleep(100000);
 vws_frame_send_text(cnx,"SET maxdb=0 mindb=-100");
 usleep(100000);
@@ -152,7 +152,7 @@ vws_frame_send_text(cnx,"SET wf_speed=1");
 usleep(100000);
 vws_frame_send_text(cnx,"SET wf_comp=0");
 usleep(100000);
-vws_frame_send_text(cnx,"SET ident_user=Blodwyn");
+vws_frame_send_text(cnx,"SET ident_user=Edward");
 printf(" Line %d \n",__LINE__);
 
 //LOOPIN
@@ -161,8 +161,6 @@ while(1)
     {
     // Receive websocket message
     vws_msg* reply = vws_msg_recv(cnx);
-
-
 
     if (reply == NULL)
         {
@@ -174,35 +172,15 @@ while(1)
         // Free message
         printf(" Received: %d \n",debug++);
 
-for(int i = 0; i< 1024;i++)
-{
-fred = reply->data->data[i];
-xfer_buf[i] = 120 - fred;
-//printf(" %x ",fred);
-}
-
+        for(int i = 0; i< 1024;i++)
+            {
+            fred = reply->data->data[i];
+            xfer_buf[i] = 120 - fred;
+            //printf(" %x ",fred);
+            }
         vws_msg_free(reply);
 
-
-//xfer_buf = & reply->data->data;
-
-//char fred;
-
-//fred = reply->data->data[0];
-//printf("fred: %x ",fred);
-//for(int i = 0; i< 32;i++)
-
-  //  {
-  //  fred = *reply->data->data[i];
-  //  printf(" %x ",fred);
-  //  }
-
-    //xfer_buf[i] = reply->data->data[i];
-
-
-sendto(sockfd_1, &xfer_buf, FFT_PAK_LEN , 0, (struct sockaddr *) &	cliaddr_1, sizeof(cliaddr_1));
-
-
+        sendto(sockfd_1, &xfer_buf, FFT_PAK_LEN , 0, (struct sockaddr *) &	cliaddr_1, sizeof(cliaddr_1));
         }
      } //while(1)
  
@@ -212,10 +190,6 @@ vws_msg_send_binary(cnx, (ucstr)"Hello, world!", 14);
 // Receive websocket message
 vws_msg* reply = vws_msg_recv(cnx);
 printf(" Line %d \n",__LINE__);
-
-
-
-
 
 if (reply == NULL)
     {
