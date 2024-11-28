@@ -1,54 +1,29 @@
+//This uses library: https://github.com/vrtql/websockets.git
+//Make with: gcc kiwi_serv.c -lvws -o serv
+
 #include <vws/websocket.h>
 #include <unistd.h>
 #include <stdlib.h>
-
-//#include "websocket.h"
-
-#include <stdint.h>
-#include <errno.h>
-#include <signal.h>
-#include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/ip.h>
-#include <liquid/liquid.h>
-#include <math.h>
-#include <pthread.h>
-#include <sys/mman.h>
-#include <fcntl.h>
 #include <time.h>
 
-
 #define PORT_1 11366
-
 #define MAX_IN_BUF 256
 #define FFT_PAK_LEN 1024
-
-
-//char uri_string[256];
-
 
 //sockets
 struct sockaddr_in servaddr_1, cliaddr_1;
 socklen_t cliLen_1;
 int sockfd_1;
 
-
-
 int finito(char * msg)
     {
     printf(" %s \n",msg);
     return -1;
     }
-
-
-
-
-
 
 int do_network_setup()
 {
@@ -86,7 +61,6 @@ printf("Hello ACK message sent to client.\n");
 return 0;
 }
 
-
 //========
 
 int main(int argc, const char* argv[])
@@ -94,11 +68,12 @@ int main(int argc, const char* argv[])
 //cstr uri;
 char uri_string[256];
 int debug;
+int watch_dog;
 // Create connection object
 vws_cnx* cnx = vws_cnx_new();
 
-char xfer_buf[1040];
-char fred;
+uint8_t xfer_buf[1040];
+int fred,db;
 
 for(int i = 0; i< 1024;i++)
     xfer_buf[i] = i/4;
@@ -118,7 +93,7 @@ time_t utc_now = time( NULL );
 printf(" utc %d \n" , utc_now);
 
 
-//Complete GET header string is:
+//Complete 'GET' header string is:
 sprintf(uri_string,"ws://norsom.proxy.kiwisdr.com:8073/%d/W/F",utc_now);
 printf("Header string: %s\n",uri_string);
 
@@ -144,19 +119,20 @@ assert(vws_socket_is_connected((vws_socket*)cnx) == true);
 // Send a TEXT frame
 vws_frame_send_text(cnx, "SET auth t=kiwi p=");
 usleep(100000);
-vws_frame_send_text(cnx,"SET zoom=1 cf=2000");
+vws_frame_send_text(cnx,"SET zoom=8 cf=14100");
 usleep(100000);
 vws_frame_send_text(cnx,"SET maxdb=0 mindb=-100");
 usleep(100000);
-vws_frame_send_text(cnx,"SET wf_speed=1");
+vws_frame_send_text(cnx,"SET wf_speed=2");
 usleep(100000);
 vws_frame_send_text(cnx,"SET wf_comp=0");
 usleep(100000);
-vws_frame_send_text(cnx,"SET ident_user=Edward");
+vws_frame_send_text(cnx,"SET ident_user=Lowa Wather");
 printf(" Line %d \n",__LINE__);
 
 //LOOPIN
 debug = 0;
+watch_dog=0;
 while(1)
     {
     // Receive websocket message
@@ -171,13 +147,33 @@ while(1)
         {
         // Free message
         printf(" Received: %d \n",debug++);
+        if(watch_dog++ > 30)
+            {
+            watch_dog = 0;
+            vws_frame_send_text(cnx,"SET keepalive");
+            }
+
 
         for(int i = 0; i< 1024;i++)
             {
-            fred = reply->data->data[i];
-            xfer_buf[i] = 120 - fred;
-            //printf(" %x ",fred);
+            //fred = reply->data->data[i]; //this needs work
+            xfer_buf[i] = reply->data->data[i]; //120 - fred;
+            //db = -(255 - fred);
+            
+            //printf("sent %d : db %d \n",fred,db);
             }
+                      
+            
+            
+/* From Pythonia......
+   
+    def spectrum_db2col(self):
+        wf = self.spectrum
+        wf = -(255 - wf)  # dBm
+        wf_db = wf - 13 + (3*self.zoom) # typical Kiwi wf cal and zoom correction
+        wf_db[0] = wf_db[1] # first bin is broken         
+ */           
+            
         vws_msg_free(reply);
 
         sendto(sockfd_1, &xfer_buf, FFT_PAK_LEN , 0, (struct sockaddr *) &	cliaddr_1, sizeof(cliaddr_1));
