@@ -17,7 +17,6 @@
 #define MAX_IN_BUF 256
 #define FFT_PAK_LEN 1024
 
-//sockets
 struct sockaddr_in servaddr_1, cliaddr_1;
 socklen_t cliLen_1;
 int sockfd_1;
@@ -25,73 +24,24 @@ vws_cnx* cnx;
 
 char rx_msg_buf[256];
 
-//Rx thread here
-/*
-#Handle incoming request message from client
-def start_secondary():
-
-    while True:
-        bytesAddressPair = UDPServerSocket.recvfrom(bufferSize)
-        message = bytesAddressPair[0]
-        address = bytesAddressPair[1]
-
-        request = message
- 
-        if bytearray2str(request[0:3]) == "SET":
-            print(request)
-        
-            action = bytearray2str(request[4:20]) #find action required
-            kiwi_msg = ("SET " + action)
-            print("Sending: ", kiwi_msg)
-            mystream.send_message(kiwi_msg)
-        
-secondary_thread = threading.Thread(target = start_secondary)
-secondary_thread.daemon = True #ensures both threads are killed on cntl C
-*/
-
 void * command_handler(void *arg)  
 {
-
 socklen_t len;    
-    
-    
+
 while(1)
     {
-        
     int n = recvfrom(sockfd_1, & rx_msg_buf, MAX_IN_BUF, 0, ( struct sockaddr *) &cliaddr_1,&len); 
-printf(" GOT A MESSG \n");
+    //printf(" GOT A MESSG \n");
     if (strncmp(rx_msg_buf,"SET",3)==0)
         {
         printf("%s \n", rx_msg_buf);
-        printf(" mable \n");
-       vws_frame_send_text(cnx,"SET wf_comp=4");
-      
-      
+        vws_frame_send_text(cnx,rx_msg_buf); //"SET wf_speed=4");
         }
-           // action = bytearray2str(request[4:20]) #find action required
-           // kiwi_msg = ("SET " + action)
-           // print("Sending: ", kiwi_msg)
-           // mystream.send_message(kiwi_msg)
-
-    //print address of client
-   // timeout=200000;
-   // char clientname[256];
-   // printf("Client Adress = %s \n",inet_ntop(AF_INET,&cliaddr_1.sin_addr,
-                   // clientname,sizeof(clientname)));
-
-
-    //rx_msg_buffer[n] = '\0'; 
-    //printf("Client: %s\n", rx_msg_buffer); 
-
-  //  freq = rx_msg_buffer[FREQ];
-  //  *rx_freq = (uint32_t)floor(freq/pitaya_xtal*(1<<30)+0.5);
-        
-usleep(100000);            
+    usleep(100000);            
     }
-        //should never get here
+//should never get here
 printf(" RX COMMAND ERROR Line %d \n",__LINE__);
 return NULL;
-
 }
 
 //end rx thread =============
@@ -191,7 +141,7 @@ vws_frame_send_text(cnx,"SET zoom=8 cf=14100");
 usleep(100000);
 vws_frame_send_text(cnx,"SET maxdb=0 mindb=-100");
 usleep(100000);
-vws_frame_send_text(cnx,"SET wf_speed=2");
+vws_frame_send_text(cnx,"SET wf_speed=1");
 usleep(100000);
 vws_frame_send_text(cnx,"SET wf_comp=0");
 usleep(100000);
