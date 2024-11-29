@@ -72,15 +72,12 @@ int watch_dog;
 // Create connection object
 vws_cnx* cnx = vws_cnx_new();
 
-uint8_t xfer_buf[1040];
-int fred,db;
+int8_t xfer_buf[1040];
 
 for(int i = 0; i< 1024;i++)
     xfer_buf[i] = i/4;
 
-
 do_network_setup();
-
 
 // Set connection timeout to 2 seconds (the default is 10). This applies
 // both to connect() and to read operations (i.e. poll()).
@@ -92,13 +89,10 @@ vws_socket_set_timeout((vws_socket*)cnx, 5);
 time_t utc_now = time( NULL );
 printf(" utc %d \n" , utc_now);
 
-
 //Complete 'GET' header string is:
 sprintf(uri_string,"ws://norsom.proxy.kiwisdr.com:8073/%d/W/F",utc_now);
 printf("Header string: %s\n",uri_string);
 
-//cstr uri = "ws://norsom.proxy.kiwisdr.com:8073/%d/W/F",utc_now);
-       
 if (vws_connect(cnx, uri_string) == false)
     {
     printf("Failed to connect to the WebSocket server\n");
@@ -106,8 +100,7 @@ if (vws_connect(cnx, uri_string) == false)
     return 1;
     }
 
-// Can check connection state this way. Should always be true here as we
-// just successfully connected.
+// Can check connection state this way. 
 assert(vws_socket_is_connected((vws_socket*)cnx) == true);
 
 // Enable tracing. This will dump frames to the console in human-readable
@@ -133,6 +126,7 @@ printf(" Line %d \n",__LINE__);
 //LOOPIN
 debug = 0;
 watch_dog=0;
+
 while(1)
     {
     // Receive websocket message
@@ -153,27 +147,10 @@ while(1)
             vws_frame_send_text(cnx,"SET keepalive");
             }
 
-
         for(int i = 0; i< 1024;i++)
             {
-            //fred = reply->data->data[i]; //this needs work
-            xfer_buf[i] = reply->data->data[i]; //120 - fred;
-            //db = -(255 - fred);
-            
-            //printf("sent %d : db %d \n",fred,db);
+            xfer_buf[i] = reply->data->data[i]; //signed dB
             }
-                      
-            
-            
-/* From Pythonia......
-   
-    def spectrum_db2col(self):
-        wf = self.spectrum
-        wf = -(255 - wf)  # dBm
-        wf_db = wf - 13 + (3*self.zoom) # typical Kiwi wf cal and zoom correction
-        wf_db[0] = wf_db[1] # first bin is broken         
- */           
-            
         vws_msg_free(reply);
 
         sendto(sockfd_1, &xfer_buf, FFT_PAK_LEN , 0, (struct sockaddr *) &	cliaddr_1, sizeof(cliaddr_1));
