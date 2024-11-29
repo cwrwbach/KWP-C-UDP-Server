@@ -9,6 +9,9 @@
 #include <sys/types.h>
 #include <netinet/ip.h>
 #include <time.h>
+#include <pthread.h>
+#include <netinet/ip.h>
+#include <arpa/inet.h>
 
 #define PORT_1 11366
 #define MAX_IN_BUF 256
@@ -18,16 +21,90 @@
 struct sockaddr_in servaddr_1, cliaddr_1;
 socklen_t cliLen_1;
 int sockfd_1;
+vws_cnx* cnx;
+
+char rx_msg_buf[256];
+
+//Rx thread here
+/*
+#Handle incoming request message from client
+def start_secondary():
+
+    while True:
+        bytesAddressPair = UDPServerSocket.recvfrom(bufferSize)
+        message = bytesAddressPair[0]
+        address = bytesAddressPair[1]
+
+        request = message
+ 
+        if bytearray2str(request[0:3]) == "SET":
+            print(request)
+        
+            action = bytearray2str(request[4:20]) #find action required
+            kiwi_msg = ("SET " + action)
+            print("Sending: ", kiwi_msg)
+            mystream.send_message(kiwi_msg)
+        
+secondary_thread = threading.Thread(target = start_secondary)
+secondary_thread.daemon = True #ensures both threads are killed on cntl C
+*/
+
+void * command_handler(void *arg)  
+{
+
+socklen_t len;    
+    
+    
+while(1)
+    {
+        
+    int n = recvfrom(sockfd_1, & rx_msg_buf, MAX_IN_BUF, 0, ( struct sockaddr *) &cliaddr_1,&len); 
+printf(" GOT A MESSG \n");
+    if (strncmp(rx_msg_buf,"SET",3)==0)
+        {
+        printf("%s \n", rx_msg_buf);
+        printf(" mable \n");
+       vws_frame_send_text(cnx,"SET wf_comp=4");
+      
+      
+        }
+           // action = bytearray2str(request[4:20]) #find action required
+           // kiwi_msg = ("SET " + action)
+           // print("Sending: ", kiwi_msg)
+           // mystream.send_message(kiwi_msg)
+
+    //print address of client
+   // timeout=200000;
+   // char clientname[256];
+   // printf("Client Adress = %s \n",inet_ntop(AF_INET,&cliaddr_1.sin_addr,
+                   // clientname,sizeof(clientname)));
+
+
+    //rx_msg_buffer[n] = '\0'; 
+    //printf("Client: %s\n", rx_msg_buffer); 
+
+  //  freq = rx_msg_buffer[FREQ];
+  //  *rx_freq = (uint32_t)floor(freq/pitaya_xtal*(1<<30)+0.5);
+        
+usleep(100000);            
+    }
+        //should never get here
+printf(" RX COMMAND ERROR Line %d \n",__LINE__);
+return NULL;
+
+}
+
+//end rx thread =============
 
 int finito(char * msg)
     {
     printf(" %s \n",msg);
     return -1;
     }
-
+    
 int do_network_setup()
 {
-int rx_msg_buffer[256];
+//int rx_msg_buf[256];
 char *hello = "ZXP server"; 
 cliLen_1 = sizeof(struct sockaddr_in);
 socklen_t len;
@@ -51,7 +128,7 @@ if ( bind(sockfd_1,(const struct sockaddr *)&servaddr_1, sizeof(servaddr_1)) < 0
 len = sizeof(cliaddr_1);
 
 printf(" Bound, waiting for incoming \n");
-recvfrom(sockfd_1, & rx_msg_buffer, MAX_IN_BUF, 0, ( struct sockaddr *) &cliaddr_1, 
+recvfrom(sockfd_1, & rx_msg_buf, MAX_IN_BUF, 0, ( struct sockaddr *) &cliaddr_1, 
                 &len); 
 printf(" Got a caller, sending ack \n");
 
@@ -65,17 +142,17 @@ return 0;
 
 int main(int argc, const char* argv[])
 {
-//cstr uri;
+pthread_t thread;
 char uri_string[256];
 int debug;
 int watch_dog;
 // Create connection object
-vws_cnx* cnx = vws_cnx_new();
+cnx = vws_cnx_new();
 
 int8_t xfer_buf[1040];
 
-for(int i = 0; i< 1024;i++)
-    xfer_buf[i] = i/4;
+//for(int i = 0; i< 1024;i++)
+//    xfer_buf[i] = i/4;
 
 do_network_setup();
 
@@ -103,12 +180,10 @@ if (vws_connect(cnx, uri_string) == false)
 // Can check connection state this way. 
 assert(vws_socket_is_connected((vws_socket*)cnx) == true);
 
-// Enable tracing. This will dump frames to the console in human-readable
-// format as they are sent and received.
+// Enable tracing - dump frames to the console in human-readable format.
 //vws.tracelevel = VT_PROTOCOL;
 
-//The following are the series of command to the KIWISDR to set up a waterfall
-
+//Commands to the KIWISDR to set up a waterfall
 // Send a TEXT frame
 vws_frame_send_text(cnx, "SET auth t=kiwi p=");
 usleep(100000);
@@ -126,6 +201,10 @@ printf(" Line %d \n",__LINE__);
 //LOOPIN
 debug = 0;
 watch_dog=0;
+
+if(pthread_create(&thread, NULL,command_handler , NULL) < 0)
+   printf("pthread_create");
+usleep(100000);
 
 while(1)
     {
